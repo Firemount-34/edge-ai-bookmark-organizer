@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "AI 书签整理助手 (Edge / Chrome)",
+  "version": "1.0.0",
+  "description": "调用 DeepSeek、硅基流动、通义千问、OpenAI、Gemini 等大模型 API，一键对 Edge 收藏夹栏进行去重、命名规范化、URL 清洗与智能分类整理。",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "action": {
+    "default_title": "打开 AI 书签整理工作台"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "dashboard.html"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 书签整理助手 — Edge 收藏夹智能工作台</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部导航栏 -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="icons/icon48.png" alt="Logo" class="brand-logo">
+        <div>
+          <h1>AI 书签整理助手 <span class="badge">Edge / Chrome</span></h1>
+          <p class="subtitle">调用大模型 API 一键完成收藏夹栏去重、命名规范化、URL 清洗与智能归类</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-refresh" class="btn btn-secondary" title="重新读取浏览器当前书签">
+          🔄 刷新当前书签
+        </button>
+        <button id="btn-export-backup" class="btn btn-secondary" title="将当前浏览器书签导出为标准 HTML 文件备份">
+          💾 导出原书签备份 (.html)
+        </button>
+      </div>
+    </header>
+
+    <!-- 主体布局：左侧配置面板 + 右侧双栏对比预览 -->
+    <main class="main-grid">
+      <!-- 左侧配置栏 -->
+      <aside class="config-panel">
+        <section class="card collapsible-card" id="api-config-card">
+          <div class="card-title-row" id="api-card-header" title="点击展开/折叠 API 配置">
+            <h2 class="card-title">1. 大模型 API 配置</h2>
+            <div class="card-header-right">
+              <span id="api-summary-badge" class="api-summary-badge hidden">已就绪</span>
+              <button type="button" id="btn-toggle-api-card" class="btn-collapse" aria-label="折叠/展开">🔼 收起</button>
+            </div>
+          </div>
+          
+          <div id="api-card-body" class="card-body">
+            <div class="form-group">
+              <label for="provider-select">服务商预设</label>
+              <select id="provider-select" class="form-control">
+                <option value="deepseek">DeepSeek (深度求索官方)</option>
+                <option value="siliconflow">硅基流动 (SiliconFlow)</option>
+                <option value="qwen">阿里云百炼 / 通义千问 (Qwen)</option>
+                <option value="volcengine">火山引擎 (豆包大模型)</option>
+                <option value="openai">OpenAI (ChatGPT)</option>
+                <option value="gemini">Google Gemini (OpenAI 兼容接口)</option>
+                <option value="custom">自定义 OpenAI 兼容接口 / 本地 Ollama</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="api-base-url">API Base URL (Endpoint)</label>
+              <input type="text" id="api-base-url" class="form-control" placeholder="https://api.deepseek.com/v1">
+              <small class="help-text">会自动拼接 <code>/chat/completions</code>（也可直接填完整路径）</small>
+            </div>
+
+            <div class="form-group">
+              <label for="api-key">API Key</label>
+              <div class="input-with-toggle">
+                <input type="password" id="api-key" class="form-control" placeholder="sk-...">
+                <button type="button" id="btn-toggle-key" class="btn-icon" title="显示/隐藏密钥">👁️</button>
+              </div>
+              <small class="help-text">密钥仅保存在您本地浏览器的 <code>chrome.storage.local</code> 中</small>
+            </div>
+
+            <div class="form-group">
+              <label for="model-name">模型名称 (Model ID)</label>
+              <input type="text" id="model-name" class="form-control" list="model-suggestions" placeholder="deepseek-chat">
+              <datalist id="model-suggestions"></datalist>
+            </div>
+
+            <div class="form-actions">
+              <button id="btn-save-config" class="btn btn-outline">💾 保存配置</button>
+              <button id="btn-test-api" class="btn btn-outline">⚡ 测试连接</button>
+            </div>
+            <div id="api-status" class="status-msg hidden"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">2. 整理范围与分类策略</h2>
+
+          <div class="form-group">
+            <label for="target-folder">选择要整理的书签目录</label>
+            <select id="target-folder" class="form-control">
+              <option value="1">收藏夹栏 (Favorites Bar)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="opt-dedup" checked>
+              <span>自动去除重复 URL 的书签</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="opt-clean-url" checked>
+              <span>清理 URL 中的广告追踪参数与临时 Token</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="opt-rename" checked>
+              <span>规范化简写标题与冗长 SEO 标题</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="custom-prompt">自定义分类偏好 / 提示词补充</label>
+            <textarea id="custom-prompt" class="form-control" rows="4" placeholder="例如：请按【🎓 学校与教育】【🔬 科研与学术】【🤖 AI 与大模型】【🛠️ 数码硬件与效率工具】【🌐 社区与邮箱】【🎬 影音与购物】两级目录进行分类..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="batch-size">单次请求分批大小 (防超长截断)</label>
+            <select id="batch-size" class="form-control">
+              <option value="80">每批 80 条书签</option>
+              <option value="120" selected>每批 120 条书签 (推荐)</option>
+              <option value="200">每批 200 条书签 (全量单次)</option>
+            </select>
+          </div>
+
+          <button id="btn-run-ai" class="btn btn-primary btn-block">
+            ✨ 开始 AI 智能整理预览
+          </button>
+
+          <div id="progress-box" class="progress-box hidden">
+            <div class="progress-header">
+              <span id="progress-text">正在请求大模型分析书签...</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">3. 应用到 Edge 收藏夹栏</h2>
+          <div class="form-group">
+            <label for="apply-mode">写入方式</label>
+            <select id="apply-mode" class="form-control">
+              <option value="safe_folder" selected>🛡️ 安全模式：在收藏夹栏新建【AI 整理结果】文件夹</option>
+              <option value="backup_and_replace">🔄 替换模式：自动备份原收藏夹栏到【其他收藏夹】并直接替换</option>
+            </select>
+          </div>
+          <div class="apply-actions">
+            <button id="btn-apply-bookmarks" class="btn btn-success btn-block" disabled>
+              🚀 确认并写入 Edge 收藏夹
+            </button>
+            <button id="btn-export-organized" class="btn btn-outline btn-block" disabled>
+              📥 导出整理后的 HTML 文件
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- 右侧双栏预览工作区 -->
+      <section class="workspace-panel">
+        <!-- 统计概览卡片 -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-label">原书签总数</span>
+            <span class="stat-value" id="stat-orig-count">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">规划前分类数</span>
+            <span class="stat-value" id="stat-orig-folders">0 大类 / 0 子类</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">去重后独立网址</span>
+            <span class="stat-value highlight" id="stat-unique-count">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">AI 规划后分类数</span>
+            <span class="stat-value highlight" id="stat-ai-cats">-</span>
+          </div>
+        </div>
+
+        <div class="comparison-grid">
+          <!-- 左栏：当前浏览器书签树 -->
+          <div class="tree-column card">
+            <div class="column-header">
+              <h3>📂 当前收藏夹结构</h3>
+              <div class="column-tools">
+                <button type="button" id="btn-toggle-all-orig" class="btn-tool" data-expanded="true" title="全部展开 / 全部折叠">折叠全部</button>
+                <input type="search" id="search-orig" class="search-input" placeholder="搜索当前书签...">
+              </div>
+            </div>
+            <div id="orig-tree-container" class="tree-container">
+              <div class="empty-state">正在读取浏览器书签...</div>
+            </div>
+          </div>
+
+          <!-- 右栏：AI 整理后书签树（支持预览与微调） -->
+          <div class="tree-column card">
+            <div class="column-header">
+              <h3>✨ AI 整理后结构预览</h3>
+              <div class="column-tools">
+                <button type="button" id="btn-toggle-all-ai" class="btn-tool" data-expanded="true" title="全部展开 / 全部折叠">折叠全部</button>
+                <input type="search" id="search-ai" class="search-input" placeholder="搜索整理后结果...">
+              </div>
+            </div>
+            <div id="ai-tree-container" class="tree-container">
+              <div class="empty-state">
+                <p>👈 请在左侧配置大模型 API 并点击<strong>「开始 AI 智能整理预览」</strong></p>
+                <p class="sub-hint">生成预览后，您可以在此检查每个分类、修改书签名称，确认无误后再一键写入 Edge 收藏夹栏。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

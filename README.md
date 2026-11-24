@@ -6,7 +6,12 @@
 
 <p align="center">
   <strong>基于 Manifest V3 的 Microsoft Edge / Google Chrome 收藏夹智能整理扩展</strong><br>
-  调用主流大模型 API，一键完成浏览器书签去重、URL 追踪参数净化、标题规范化与两级目录智能重构。
+  调用主流大模型 API，一键完成浏览器书签去重、URL 追踪参数净化、标题规范化与两级目录智能重构。<br>
+  <em>An intelligent Manifest V3 browser extension for Microsoft Edge & Google Chrome that organizes, deduplicates, and cleans bookmarks using mainstream LLM APIs.</em>
+</p>
+
+<p align="center">
+  <strong>简体中文</strong> | <a href="./README_EN.md">English Documentation</a>
 </p>
 
 ---
@@ -92,7 +97,8 @@ edge-ai-bookmark-organizer/
 │   ├── icon16.png
 │   ├── icon48.png
 │   └── icon128.png
-└── README.md          # 项目说明文档
+├── README.md          # 中文项目说明文档 (简体中文)
+└── README_EN.md       # 英文项目说明文档 (English)
 ```
 
 ---
